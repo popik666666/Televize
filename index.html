@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>IPTV — Všechny kanály (Dynamicky generováno)</title>
+<title>IPTV — Všechny země (Podle států a žánrů)</title>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <style>
   :root{
@@ -11,101 +11,189 @@
   }
   body{background:var(--bg); color:#eaf6ff; font-family:Inter, Arial, Helvetica, sans-serif; margin:0; padding:14px;}
   h1{color:var(--muted); margin:8px 0 16px;}
-  .wrap{display:grid; grid-template-columns: 1fr 360px; gap:14px;}
+  .wrap{display:grid; grid-template-columns: 1fr 320px; gap:14px;}
   #main{min-width:0}
-  #player-container{background:var(--card); padding:12px; border-radius:8px; margin-bottom:12px; text-align:center}
-  video{width:100%; max-width:100%; height:420px; background:#000; border-radius:6px}
-  .controls-row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px}
-  .section{background:var(--panel); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03)}
-  .section h2{margin:0 0 8px; color:var(--muted); font-size:1rem}
+  
+  /* ROZVRŽENÍ: Obrazovka + Stanice vedle sebe */
+  .player-and-channels {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  #player-container{background:var(--card); padding:12px; border-radius:8px; text-align:center}
+  video{width:100%; max-width:100%; height:400px; background:#000; border-radius:6px; object-fit:contain;}
+  .controls-row{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;}
+  
+  /* Panel kanálů vedle přehrávače */
+  #active-channels-panel {
+    background: var(--panel);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    max-height: 520px;
+  }
+  #active-channels-panel h2 {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ČTVERCE ZEMÍ (Grid) */
+  .country-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .country-square {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 12px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 65px;
+    user-select: none;
+  }
+  .country-square:hover {
+    background: var(--accent);
+    border-color: var(--muted);
+    transform: translateY(-2px);
+  }
+  .country-square.active {
+    background: var(--accent);
+    border: 2px solid #7fff7f;
+    box-shadow: 0 0 10px rgba(11, 111, 179, 0.5);
+  }
+  .country-square .country-title {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #eaf6ff;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+
   button{background:var(--accent); color:white; border:0; padding:7px 10px; border-radius:6px; cursor:pointer}
   button:disabled{background:#2a3f52; opacity:0.7; cursor:not-allowed}
-  input.filter-input{display:none; width:100%; padding:8px; border-radius:6px; border:0; margin-top:8px; color:#001933}
-  ul.channel-list{display:none; list-style:none; margin:8px 0 0; padding:0; max-height:320px; overflow:auto; border-radius:6px; background:#033652; border:1px solid rgba(255,255,255,0.03)}
+  
+  .filter-input, .genre-select {
+    width:100%; 
+    padding:8px; 
+    border-radius:6px; 
+    border:0; 
+    margin-top:6px; 
+    color:#001933; 
+    box-sizing:border-box;
+    font-weight: bold;
+  }
+
+  ul.channel-list{
+    list-style:none; 
+    margin:8px 0 0; 
+    padding:0; 
+    flex-grow: 1;
+    overflow-y:auto; 
+    border-radius:6px; 
+    background:#033652; 
+    border:1px solid rgba(255,255,255,0.03)
+  }
   ul.channel-list li{display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.02); cursor:pointer}
-  ul.channel-list li:hover{background:rgba(11,111,179,0.12)}
-  ul.channel-list li.active{background:rgba(11,111,179,0.3)}
-  .channel-info{flex:1; font-weight:600; color:#dff6ff}
+  ul.channel-list li:hover{background:rgba(11,111,179,0.2)}
+  ul.channel-list li.active{background:rgba(11,111,179,0.5); border-left:4px solid #7fff7f;}
+  .channel-info{flex:1; font-weight:600; color:#dff6ff; font-size:0.9rem;}
+  .genre-badge{font-size:0.75rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; margin-left:6px; color:#9fd6ff;}
   .status{margin-left:10px; font-weight:700}
   .status.ok{color:#7fff7f}
   .status.fail{color:#ff7b7b}
   .fav-star{cursor:pointer; margin-left:8px; color:#ddd; user-select:none}
   .fav-star.fav{color:gold}
-  .summary{margin-top:8px; color:#cfe; font-size:0.95rem}
+  .summary{margin-top:8px; color:#cfe; font-size:0.85rem}
   aside{background:var(--panel); padding:12px; border-radius:8px; height:100%}
   footer{margin-top:14px;color:#9fc; font-size:0.9rem; text-align:center}
-  .support-btn {
-      background-color: #00457C; 
-      color: white; 
-      padding: 10px 20px; 
-      text-decoration: none; 
-      border-radius: 5px;
-      display: inline-block;
-      font-weight: 600;
-      margin-top: 8px; 
+
+  @media (max-width:1100px) { 
+    .wrap{grid-template-columns:1fr} 
+    .player-and-channels { grid-template-columns: 1fr; }
+    video{height:280px} 
+    #active-channels-panel { max-height: 420px; }
+    .country-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
   }
-  .tip-section {
-      background: #002b47; /* Tmavší pozadí */
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 14px; /* Odsazení od obsahu */
-      border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  @media (max-width:1100px) { .wrap{grid-template-columns:1fr} video{height:260px} }
 </style>
 </head>
 <body>
-  <h1>IPTV — Všechny kanály (Dynamicky generováno)</h1>
+  <h1>IPTV — Seznam států a žánrů</h1>
 
-  <div class="tip-section">
-      <div style="font-weight:700; color:#7fff7f; margin-bottom: 4px;">💚 Podpořte tvorbu:</div>
-      <h4 style="margin: 0 0 8px; color: #fff;">Spropitné a dary</h4>
-      
-      <p style="color:#fff; font-size:1.1rem; word-break: break-all; margin: 0 0 8px;">
-          <strong>Číslo účtu:</strong> 1018678746/5500
-      </p>
-      
-      <a href="https://paypal.me/PetrLudvik" target="_blank" class="support-btn">
-          💰 Přispět přes PayPal
-      </a>
-  </div>
   <div class="wrap">
     <main id="main">
-      <div id="player-container">
-        <video id="player" controls autoplay muted playsinline></video>
-        <div class="controls-row" style="margin-top:8px; justify-content: space-between;">
-          <button id="fullscreen-btn" title="Celá obrazovka" style="min-width: 120px;">
-              ⬜ Celá obrazovka
-          </button>
-          <div style="color:#bfe; font-size: 0.9em; flex-grow: 1; text-align: right;">
-              Klikni na kanál v seznamu pro **přehrání**. (Video je při autostartu ztlumené.)
+      <!-- Obrazovka + Stanice vedle sebe -->
+      <div class="player-and-channels">
+        <div id="player-container">
+          <video id="player" controls autoplay muted playsinline></video>
+          <div class="controls-row" style="justify-content: space-between;">
+            <button id="fullscreen-btn" title="Celá obrazovka" style="min-width: 120px;">
+                📺 Fullscreen
+            </button>
+            <div style="color:#bfe; font-size: 0.85em; flex-grow: 1; text-align: right;">
+                Klikni na kanál v seznamu pro <strong>přehrání</strong>.
+            </div>
           </div>
+        </div>
+
+        <!-- Seznam stanic načtených vedle obrazovky -->
+        <div id="active-channels-panel">
+          <h2 id="active-title">Vyberte zemi níže 👇</h2>
+          
+          <!-- Výběr žánru (kategorie) -->
+          <select id="genre-filter" class="genre-select" style="display:none;">
+            <option value="ALL">🎭 Všechny žánry</option>
+          </select>
+
+          <!-- Vyhledávání textem -->
+          <input class="filter-input" id="active-filter" placeholder="🔍 Hledat stanici…" style="display:none;" />
+
+          <div class="controls-row" id="active-controls" style="display:none;">
+            <button id="active-refresh-btn" class="refresh-btn">Ověřit stanice</button>
+          </div>
+
+          <ul class="channel-list" id="active-list">
+            <li style="padding:15px; text-align:center; color:#9fd6ff;">Klikněte na jakýkoliv čtverec země níže pro načtení stanic.</li>
+          </ul>
+          <div class="summary" id="active-summary"></div>
         </div>
       </div>
 
-      <div class="grid" id="sections-container"></div>
+      <!-- Mřížka Čtverců Pouze Pro Země -->
+      <h2 style="color:var(--muted); margin: 15px 0 10px;">Vyberte zemi:</h2>
+      <div class="country-grid" id="sections-container"></div>
     </main>
 
     <aside>
       <h3 style="margin-top:0">Legenda / Tipy</h3>
-      <p style="color:#cde">✅ funkční • ❌ nefunkční • ❔ netestováno/test probíhá</p>
-      <p style="color:#cde">⭐ klikni pro **oblíbené** (uložené lokálně)</p>
-      <p style="color:#cde">Tlačítko **Načíst/Zavřít** funguje jako otevření seznamu.</p>
+      <p style="color:#cde">✅ funkční • ❌ nefunkční • ❔ netestováno</p>
+      <p style="color:#cde">⭐ klikni pro <strong>oblíbené</strong> (uložené lokálně)</p>
       <hr style="border-color:rgba(255,255,255,0.04)">
-      <div style="font-weight:700;color:#9fd6ff">Důležité:</div>
-      <p style="color:#bfe">Seznam sekcí je generován pro **246 zemí a regionů** a **globální zdroje**. Některé playlisty mohou být prázdné nebo nefunkční.</p>
-      <p style="color:#f99">**RTSP streamy jsou automaticky filtrovány** a v prohlížeči nejsou podporovány.</p>
-      <hr style="border-color:rgba(255,255,255,0.04)">
-      
-      </aside>
+      <div style="font-weight:700;color:#9fd6ff">Poznámka:</div>
+      <p style="color:#bfe">Seznam je seřazen podle států. Žánry se roztřídí automaticky po načtení konkrétní země.</p>
+      <p style="color:#f99"><strong>RTSP streamy jsou filtrovány</strong> (nefungují v prohlížeči).</p>
+    </aside>
   </div>
 
-  <footer>Hotovo — stránka běží čistě v prohlížeči (klient-side).</footer>
+  <footer>Hotovo — stránka běží čistě v prohlížeči.</footer>
 
 <script>
-// =========================================================================
-// DATABÁZE 246 ZEMÍ A REGIONŮ (ISO 3166-1 alpha-2 kódy)
+// DATABÁZE ZEMÍ A REGIONŮ (ISO 3166-1 alpha-2 kódy)
 const countryList = {
   "AF":"Afghánistán 🇦🇫","AL":"Albánie 🇦🇱","DZ":"Alžírsko 🇩🇿","AS":"Americká Samoa 🇦🇸","AD":"Andorra 🇦🇩",
   "AO":"Angola 🇦🇴","AI":"Anguilla 🇦🇮","AG":"Antigua a Barbuda 🇦🇬","AR":"Argentina 🇦🇷","AM":"Arménie 🇦🇲",
@@ -128,7 +216,7 @@ const countryList = {
   "GY":"Guyana 🇬🇾","HT":"Haiti 🇭🇹","HN":"Honduras 🇭🇳","HK":"Hongkong 🇭🇰","HU":"Maďarsko 🇭🇺",
   "IS":"Island 🇮🇸","IN":"Indie 🇮🇳","ID":"Indonésie 🇮🇩","IR":"Írán 🇮🇷","IQ":"Irák 🇮🇶",
   "IE":"Irsko 🇮🇪","IM":"Ostrov Man 🇮🇲","IL":"Izrael 🇮🇱","IT":"Itálie 🇮🇹","CI":"Pobřeží slonoviny 🇨🇮",
-  "JM":"Jamajka 🇯🇲","JP":"Japonsko 🇯🇵","JE":"Jersey 🇯🇪","JO":"Jordánsko 🇯🇴","KZ":"Kazachstán 🇰🇿",
+  "JM":"Jamajka 🇯🇲","JP":"Japonsko 🇯🇵","JE":"Jersey 🇯🇪","JO":"Jordánsko 🇯🇴","KZ":"Kazachstán 🇰ℤ",
   "KE":"Keňa 🇰🇪","KI":"Kiribati 🇰🇮","KW":"Kuvajt 🇰🇼","KG":"Kyrgyzstán 🇰🇬","LA":"Laos 🇱🇦",
   "LV":"Lotyšsko 🇱🇻","LB":"Libanon 🇱🇧","LS":"Lesotho 🇱🇸","LR":"Libérie 🇱🇷","LY":"Libye 🇱🇾",
   "LI":"Lichtenštejnsko 🇱🇮","LT":"Litva 🇱🇹","LU":"Lucembursko 🇱🇺","MO":"Macao 🇲🇴","MG":"Madagaskar 🇲🇬",
@@ -143,7 +231,7 @@ const countryList = {
   "PH":"Filipíny 🇵🇭","PN":"Pitcairnovy ostrovy 🇵🇳","PL":"Polsko 🇵🇱","PT":"Portugalsko 🇵🇹","PR":"Portoriko 🇵🇷",
   "QA":"Katar 🇶🇦","RE":"Réunion 🇷🇪","RO":"Rumunsko 🇷🇴","RU":"Rusko 🇷🇺","RW":"Rwanda 🇷🇼",
   "WS":"Samoa 🇼🇸","SM":"San Marino 🇸🇲","ST":"Svatý Tomáš a Princův ostrov 🇸🇹","SA":"Saúdská Arábie 🇸🇦",
-  "SN":"Senegal 🇸🇳","RS":"Srbsko 🇷🇸","SC":"Seychely 🇸🇨","SL":"Sierra Leone 🇱🇸","SG":"Singapur 🇸🇬",
+  "SN":"Senegal 🇸🇳","RS":"Srbsko 🇷🇸","SC":"Seychely 🇸🇨","SL":"Sierra Leone 🇸🇱","SG":"Singapur 🇸🇬",
   "SX":"Sint Maarten 🇸🇽","SK":"Slovensko 🇸🇰","SI":"Slovinsko 🇸🇮","SB":"Šalamounovy ostrovy 🇸🇧","SO":"Somálsko 🇸🇴",
   "ZA":"Jižní Afrika 🇿🇦","KR":"Jižní Korea 🇰🇷","SS":"Jižní Súdán 🇸🇸","ES":"Španělsko 🇪🇸","LK":"Srí Lanka 🇱🇰",
   "SD":"Súdán 🇸🇩","SR":"Surinam 🇸🇷","SE":"Švédsko 🇸🇪","CH":"Švýcarsko 🇨🇭","SY":"Sýrie 🇸🇾",
@@ -153,186 +241,118 @@ const countryList = {
   "UG":"Uganda 🇺🇬","UA":"Ukrajina 🇺🇦","AE":"Spojené arabské emiráty 🇦🇪","GB":"Velká Británie 🇬🇧","US":"USA 🇺🇸",
   "UY":"Uruguay 🇺🇾","UZ":"Uzbekistán 🇺🇿","VU":"Vanuatu 🇻🇺","VE":"Venezuela 🇻🇪","VN":"Vietnam 🇻🇳",
   "WF":"Wallis a Futuna 🇼🇫","EH":"Západní Sahara 🇪🇭","YE":"Jemen 🇾🇪","ZM":"Zambie 🇿🇲","ZW":"Zimbabwe 🇿🇼",
-  "XK":"Kosovo 🇽🇰","GF":"Francouzská Guyana 🇬🇫","MQ":"Martinik 🇲🇶","GP":"Guadeloupe 🇬🇵","BL":"Saint-Barthélemy 🇧🇱",
-  "MF":"Saint-Martin 🇲🇫","PM":"Saint Pierre a Miquelon 🇵🇲","GS":"Jižní Georgie a Jižní Sandwichovy ostrovy 🇬🇸",
-  "HM":"Heardův ostrov a McDonaldovy ostrovy 🇭🇲","TF":"Francouzská jižní a antarktická území 🇹🇫",
-  "AQ":"Antarktida 🇦🇶","AX":"Ålandy 🇦🇽","CW":"Curaçao 🇨🇼","BQ":"Bonaire, Saba, Sint Eustatius 🇧🇶"
+  "XK":"Kosovo 🇽🇰","BL":"Saint-Barthélemy 🇧🇱","MF":"Saint-Martin 🇲🇫","PM":"Saint Pierre a Miquelon 🇵🇲",
+  "GS":"Jižní Georgie 🇬🇸","AQ":"Antarktida 🇦🇶","AX":"Ålandy 🇦🇽","CW":"Curaçao 🇨🇼"
 };
 
-/* ================= DYNAMICKÁ INITIALIZACE (ROZTŘÍDĚNÍ) ================= */
+let currentSection = null;
 
-/** Dynamicky generuje objekt playlistů a HTML sekce.
- * MegaMix sekce je odstraněna.
- */
+function createSquareElement(sectionId, title) {
+    const div = document.createElement('div');
+    div.className = 'country-square';
+    div.id = `square-${sectionId}`;
+    div.dataset.section = sectionId;
+    div.dataset.title = title;
+    div.innerHTML = `<div class="country-title">${title}</div>`;
+    
+    div.addEventListener('click', () => {
+        selectSection(sectionId, title);
+    });
+    return div;
+}
+
 function initializePlaylistsAndSections() {
     const allPlaylists = {};
     const container = document.getElementById('sections-container');
     const sortedCountryCodes = Object.keys(countryList).sort();
-    
-    // =========================================================================
-    // 1. GLOBÁLNÍ ZDROJE (TEMATICKÉ A REGIONÁLNÍ)
-    // =========================================================================
 
-    // Sekce "Globální / Tematické"
-    const thematicAndGlobalUrls = [
-        'https://iptv-org.github.io/iptv/index/all.m3u',   // ULTRA MAX
-        'https://iptv-org.github.io/iptv/index/top.m3u',   // TOP 100
-        'https://iptv-org.github.io/streams/cameras/cameras.m3u', // Kamery
-        'https://iptv-org.github.io/iptv/index/news.m3u', 
-        'https://iptv-org.github.io/iptv/index/documentary.m3u', 
-        'https://iptv-org.github.io/iptv/index/sports.m3u', 
-        'https://iptv-org.github.io/iptv/index/movies.m3u', 
-        'https://iptv-org.github.io/iptv/index/music.m3u', 
-        'https://iptv-org.github.io/iptv/index/kids.m3u', 
-        'https://iptv-org.github.io/iptv/index/europe.m3u',
-        'https://iptv-org.github.io/iptv/index/america.m3u',
-        'https://iptv-org.github.io/iptv/languages/ces.m3u' // České kanály
-    ];
-
-    allPlaylists['global_themes'] = thematicAndGlobalUrls;
-    container.appendChild(createSectionElement('global_themes', '🌎 Globální / Tematické zdroje (Mix)'));
-
-    // Oddělovač
-    const hr = document.createElement('hr');
-    hr.style.cssText = 'grid-column: 1 / -1; border-color: rgba(255,255,255,0.04);';
-    container.appendChild(hr);
-
-    // =========================================================================
-    // 2. SEKCE PRO KAŽDOU ZEMI (246 ZEMÍ)
-    // =========================================================================
-
+    // Čtverce POUZE pro všechny země
     sortedCountryCodes.forEach(code => {
         const countryName = countryList[code];
         const sectionId = `country_${code.toLowerCase()}`;
         allPlaylists[sectionId] = [`https://iptv-org.github.io/iptv/countries/${code.toLowerCase()}.m3u`];
-        container.appendChild(createSectionElement(sectionId, countryName));
+        container.appendChild(createSquareElement(sectionId, countryName));
     });
 
-    // Vrátíme celý objekt playlists
     return allPlaylists;
 }
 
-/**
- * Vytvoří HTML strukturu pro jednu sekci/zemi.
- */
-function createSectionElement(sectionId, title) {
-    const div = document.createElement('div');
-    div.className = 'section';
-    div.id = `section-${sectionId}`;
-    div.innerHTML = `
-        <h2>${title}</h2>
-        <div class="controls-row">
-            <button class="load-btn" data-section="${sectionId}">Načíst seznam</button>
-            <button class="refresh-btn" data-section="${sectionId}" disabled>Znovu ověřit</button>
-        </div>
-        <input class="filter-input" data-section="${sectionId}" placeholder="Filtrovat kanály…" />
-        <ul class="channel-list" id="list-${sectionId}"></ul>
-        <div class="summary" id="summary-${sectionId}"></div>
-    `;
-    return div;
-}
-
-// Dynamicky inicializujeme seznam playlistů
 const playlists = initializePlaylistsAndSections();
 const loadedChannels = {};
 const favChannels = JSON.parse(localStorage.getItem('favChannels') || '{}');
 
-/* ================= HELPER FUNKCE (Procesování M3U a ověření) ================= */
+/* NAČÍTÁNÍ M3U A ZÍSKÁVÁNÍ ŽÁNRŮ (group-title) */
 
 function getCountryFromUrl(url) {
-  // Pro IPTV-org (countries/XX.m3u)
-  let match = url.match(/\/(?:countries|streams\/cameras)\/([a-z]{2})\.m3u/i);
-  if (match && match[1]) {
-    return match[1].toUpperCase();
-  }
-  // Pro globální/ostatní playlisty vracíme "GLOBAL" (ZZ)
+  let match = url.match(/\/countries\/([a-z]{2})\.m3u/i);
+  if (match && match[1]) return match[1].toUpperCase();
   return 'ZZ';
 }
 
-/**
- * Načte M3U playlist pomocí sady CORS proxy. (Rozšířený seznam proxy pro spolehlivost)
- */
 async function loadM3U(url) {
   const countryCode = getCountryFromUrl(url);
   try {
-
-    // DEFINICE PROXY URL (v pořadí preferencí) - ROZŠÍŘENO
     const proxies = [
         `https://corsproxy.io/?${encodeURIComponent(url)}`,
-        `https://proxy.cors.sh/${url}`, 
         `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
-        `https://cors-anywhere.herokuapp.com/${url}`, 
-        `https://yacdn.org/proxy/${url}`, 
-        `https://thingproxy.freeboard.io/fetch/${url}` 
+        `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`
     ];
 
     let resp = null;
     let success = false;
-    let errorLog = [];
 
     for (const proxyUrl of proxies) {
         try {
-            console.log(`Zkouším proxy: ${proxyUrl.substring(0, 50)}...`);
             resp = await fetch(proxyUrl);
-
-            // Speciální kontrola pro některé proxy
-            if (proxyUrl.includes('cors.sh') || proxyUrl.includes('herokuapp')) {
-                 const text = await resp.clone().text();
-                 if (text.startsWith('<!DOCTYPE html') || text.toLowerCase().includes('cors-anywhere') || text.length < 50) {
-                     throw new Error(`Proxy ${proxyUrl.split('/')[2]} selhala: Vrácena neočekávaná HTML/krátká odpověď.`);
-                 }
-            }
-
-            if (!resp.ok) {
-                throw new Error(`Proxy ${proxyUrl.split('/')[2]} selhala: ${resp.status}`);
-            }
-
+            if (!resp.ok) throw new Error(`Status ${resp.status}`);
             success = true;
-            break; // Přerušíme smyčku při prvním úspěchu!
-        } catch (e) {
-            errorLog.push(`${proxyUrl.split('/')[2]} - ${e.message}`);
-            resp = null;
-        }
+            break;
+        } catch (e) { resp = null; }
     }
 
     if (!success) {
-        console.warn('Všechny proxy selhaly. Zkouším přímé načtení (může být blokováno CORS).', errorLog);
         resp = await fetch(url);
-        if (!resp.ok) {
-            throw new Error('Přímé načtení také selhalo.');
-        }
+        if (!resp.ok) throw new Error('Přímé načtení selhalo.');
     }
 
     const text = await resp.text();
     const lines = text.split(/\r?\n/);
     const channels = [];
+
     for (let i = 0; i < lines.length; i++) {
       const line = (lines[i] || '').trim();
       if (line.startsWith('#EXTINF')) {
+        // Získání žánru z group-title="..."
+        let category = 'Ostatní';
+        const groupMatch = line.match(/group-title="([^"]+)"/i);
+        if (groupMatch && groupMatch[1]) {
+            category = groupMatch[1].trim();
+        }
+
         const lastComma = line.lastIndexOf(',');
         const name = lastComma >= 0 ? line.slice(lastComma + 1).trim() : line;
         const urlLine = (lines[i + 1] || '').trim();
+
         if (urlLine && (urlLine.startsWith('http') || urlLine.includes('.m3u8'))) {
-          // Ignorujeme RTSP streamy
-          if (urlLine.toLowerCase().startsWith('rtsp://')) {
-              continue;
-          }
-          channels.push({ name: name || 'Unknown', url: urlLine, source: url, country: countryCode });
+          if (urlLine.toLowerCase().startsWith('rtsp://')) continue;
+          channels.push({ 
+            name: name || 'Neznámý kanál', 
+            url: urlLine, 
+            source: url, 
+            country: countryCode,
+            category: category
+          });
         }
       }
     }
     return channels;
   } catch (e) {
-    console.warn('loadM3U error (Konečné selhání):', url, e.message);
+    console.warn('loadM3U error:', url, e.message);
     return [];
   }
 }
 
-/**
- * Zkontroluje, zda je kanál funkční, pomocí vytvoření a testu HTML5 videa.
- */
-function checkChannel(url, timeout = 8000) {
+function checkChannel(url, timeout = 6000) {
   return new Promise(resolve => {
     try {
       const v = document.createElement('video');
@@ -355,195 +375,159 @@ function checkChannel(url, timeout = 8000) {
       v.addEventListener('loadedmetadata', ()=> finish(true), { once: true });
       v.addEventListener('error', ()=> finish(false), { once: true });
 
-      // Speciální manipulace pro HLS (m3u8), které nativní <video> nemusí podporovat
-      const low = (url || '').toLowerCase();
-      if (low.includes('.m3u8') && Hls.isSupported()) {
-          const hls = new Hls();
-          v._hls = hls; // Uložíme instanci pro kontrolu v clean()
-          hls.loadSource(url);
-          hls.attachMedia(v);
-          hls.on(Hls.Events.MANIFEST_PARSED, ()=> finish(true), { once: true });
-          hls.on(Hls.Events.ERROR, (event, data) => {
-              if (data.fatal) {
-                  try { hls.destroy(); } catch(e) {}
-                  finish(false);
-              }
-          }, { once: true });
-          // Přetížíme timeout, aby zničil HLS instanci
-          clearTimeout(to);
-          to = setTimeout(()=> { try { hls.destroy(); } catch(e) {} finish(false); }, timeout);
-      } else {
-        try { v.src = url; v.load(); } catch(e) { finish(false); }
-      }
-      
+      try { v.src = url; v.load(); } catch(e) { finish(false); }
     } catch (e) {
-      console.error('checkChannel', e);
       resolve(false);
     }
   });
 }
 
+/* LOGIKA VÝBĚRU, ŽÁNRŮ A ZOBRAZENÍ */
 
-/* ================= CORE LOGIKA: NAČÍTÁNÍ A OTEVÍRÁNÍ SEZNAMU ================= */
+async function selectSection(sectionId, title) {
+  currentSection = sectionId;
 
-async function loadSection(section, loadBtn) {
-  const listEl = document.getElementById('list-' + section);
-  const filterInput = document.querySelector(`input.filter-input[data-section="${section}"]`);
-  const refreshBtn = document.querySelector(`button.refresh-btn[data-section="${section}"]`);
-  const summaryEl = document.getElementById('summary-' + section);
-  if (!listEl || !filterInput || !refreshBtn || !summaryEl) return;
+  document.querySelectorAll('.country-square').forEach(el => el.classList.remove('active'));
+  const activeSquare = document.getElementById(`square-${sectionId}`);
+  if (activeSquare) activeSquare.classList.add('active');
 
-  // 1. ZAVŘENÍ SEZNAMU (Toggle)
-  if (loadedChannels[section] && listEl.style.display === 'block') {
-    listEl.style.display = 'none';
-    filterInput.style.display = 'none';
-    refreshBtn.disabled = true;
-    summaryEl.textContent = '';
-    loadBtn.textContent = 'Načíst seznam';
-    return;
-  }
-
-  // 2. OTEVŘENÍ Z POHOTOVOSTI (Kanály jsou již načteny, jen se zobrazí)
-  if (loadedChannels[section]) {
-    listEl.style.display = 'block';
-    filterInput.style.display = 'block';
-    refreshBtn.disabled = false;
-    loadBtn.textContent = 'Zavřít seznam';
-    renderChannels(section);
-    return;
-  }
+  document.getElementById('active-title').textContent = title;
   
-  // 3. PRVNÍ NAČTENÍ (Stahování dat)
-  const urls = playlists[section] || [];
-  if (urls.length === 0) {
-    loadBtn.textContent = 'Načíst (Prázdný list)';
-    loadBtn.disabled = true;
-    summaryEl.textContent = `Kanálů: 0`;
-    return;
+  const listEl = document.getElementById('active-list');
+  const filterInput = document.getElementById('active-filter');
+  const genreSelect = document.getElementById('genre-filter');
+  const controls = document.getElementById('active-controls');
+  const summaryEl = document.getElementById('active-summary');
+
+  filterInput.style.display = 'block';
+  genreSelect.style.display = 'block';
+  controls.style.display = 'flex';
+
+  if (loadedChannels[sectionId]) {
+      updateGenreDropdown(sectionId);
+      renderChannels(sectionId);
+      return;
   }
 
-  loadBtn.textContent = 'Načítám...';
-  loadBtn.disabled = true;
-  listEl.innerHTML = '<li style="padding:10px">Stahuji playlist(y) přes proxy... Může to chvíli trvat.</li>';
-  listEl.style.display = 'block';
+  listEl.innerHTML = '<li style="padding:12px; text-align:center;">Načítám stanice a třídím žánry...</li>';
+  summaryEl.textContent = '';
 
+  const urls = playlists[sectionId] || [];
   let all = [];
   for (const u of urls) {
     const chs = await loadM3U(u);
     all = all.concat(chs);
   }
 
-  // Deduplikace podle URL (ponechá první výskyt)
   const dedupMap = new Map();
   for (const ch of all) {
       if (!dedupMap.has(ch.url)) {
           dedupMap.set(ch.url, { ...ch, playable: undefined });
-      } else {
-          const existing = dedupMap.get(ch.url);
-          if (existing.country === 'ZZ' && ch.country !== 'ZZ') {
-              existing.country = ch.country;
-          }
       }
   }
   const dedup = Array.from(dedupMap.values());
-  
-  // Kontrola prázdného seznamu
+
   if (dedup.length === 0) {
-      listEl.innerHTML = '<li style="padding:10px; color:#ff9999;">Načtení se nezdařilo. Vyzkoušejte jiné sekce, nebo proxy nefungují.</li>';
-      refreshBtn.disabled = true;
-      loadBtn.textContent = 'Načíst seznam';
-      loadBtn.disabled = false;
+      listEl.innerHTML = '<li style="padding:12px; color:#ff9999; text-align:center;">Žádné stanice nebyly nalezeny.</li>';
       summaryEl.textContent = `Kanálů: 0`;
       return;
   }
 
-  loadedChannels[section] = dedup;
-  filterInput.style.display = 'block';
-  refreshBtn.disabled = false;
-  loadBtn.textContent = 'Zavřít seznam';
-  loadBtn.disabled = false; // Povolení pro toggle
-
-  renderChannels(section);
-  
-  // *** AUTOMATICKÝ PŘEDTEST PRVNÍCH KANÁLŮ (pro lepší UX) ***
-  (async function autoCheck() {
-      const channelsToCheck = dedup.slice(0, 10); // Otestuje jen prvních 10 kanálů
-      for (const ch of channelsToCheck) {
-          const ok = await checkChannel(ch.url, 4000); 
-          ch.playable = ok;
-          renderChannels(section); // Průběžná aktualizace UI
-      }
-      const total = dedup.length;
-      const okCount = dedup.filter(c => c.playable).length; 
-      const unknownCount = dedup.filter(c => c.playable === undefined).length;
-      summaryEl.textContent = `Kanálů: ${total} | Zobrazeno: ${dedup.filter(c => c.playable !== false).length} | Funkčních: ${okCount} | Neznámých: ${unknownCount}`;
-  })();
+  loadedChannels[sectionId] = dedup;
+  updateGenreDropdown(sectionId);
+  renderChannels(sectionId);
 }
 
-function renderChannels(section) {
-  const listEl = document.getElementById('list-' + section);
-  const filterInput = document.querySelector(`input.filter-input[data-section="${section}"]`);
-  const summaryEl = document.getElementById('summary-' + section);
-  if (!listEl || !loadedChannels[section]) return;
+function updateGenreDropdown(sectionId) {
+  const genreSelect = document.getElementById('genre-filter');
+  const channels = loadedChannels[sectionId] || [];
 
-  const filter = (filterInput.value || '').toLowerCase();
+  const categories = new Set();
+  channels.forEach(ch => {
+    if (ch.category) categories.add(ch.category);
+  });
+
+  const sorted = Array.from(categories).sort();
+  genreSelect.innerHTML = '<option value="ALL">🎭 Všechny žánry (' + channels.length + ')</option>';
+  
+  sorted.forEach(cat => {
+    const count = channels.filter(c => c.category === cat).length;
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = `${cat} (${count})`;
+    genreSelect.appendChild(opt);
+  });
+}
+
+function renderChannels(sectionId) {
+  if (currentSection !== sectionId) return;
+
+  const listEl = document.getElementById('active-list');
+  const filterInput = document.getElementById('active-filter');
+  const genreSelect = document.getElementById('genre-filter');
+  const summaryEl = document.getElementById('active-summary');
+
+  if (!loadedChannels[sectionId]) return;
+
+  const filterText = (filterInput.value || '').toLowerCase();
+  const selectedGenre = genreSelect.value;
   listEl.innerHTML = '';
 
-  const arr = loadedChannels[section].slice().sort((a,b)=>{
-    // 1. Oblíbené
+  let arr = loadedChannels[sectionId].slice();
+
+  // Filtr podle žánru
+  if (selectedGenre !== 'ALL') {
+    arr = arr.filter(ch => ch.category === selectedGenre);
+  }
+
+  // Filtr podle textu
+  if (filterText) {
+    arr = arr.filter(ch => ch.name.toLowerCase().includes(filterText) || ch.category.toLowerCase().includes(filterText));
+  }
+
+  // Řazení: Oblíbené první, potom podle abecedy
+  arr.sort((a,b)=>{
     const af = favChannels[a.url] ? 0 : 1;
     const bf = favChannels[b.url] ? 0 : 1;
     if (af !== bf) return af - bf;
-    // 2. Země
-    const countryA = a.country || 'ZZ';
-    const countryB = b.country || 'ZZ';
-    if (countryA !== countryB) return countryA.localeCompare(countryB);
-    // 3. Jméno
     return a.name.localeCompare(b.name);
   });
 
-  // *** FILTR PRO SKRYTÍ NEFUNKČNÍCH (ch.playable === false) ***
-  const visible = arr.filter(ch => 
-    (ch.name.toLowerCase().includes(filter) || (ch.country && ch.country.toLowerCase().includes(filter)))
-    // Skryje kanál, pokud je označen jako NEFUNKČNÍ (false) A ZÁROVEŇ NEFILTRUJEME (aby bylo možné nefunkční kanál vyhledat)
-    && (filter.length > 0 || ch.playable !== false) 
-  );
-  
-  if (visible.length === 0) {
-      listEl.innerHTML = '<li style="padding:10px">Žádné kanály neodpovídají filtru, nebo jsou všechny skryty (nefunkční).</li>';
+  if (arr.length === 0) {
+      listEl.innerHTML = '<li style="padding:12px; text-align:center;">Žádné stanice neodpovídají vývěru.</li>';
   }
-  
+
+  // Zobrazení prvních max 250 stanic pro zajištění plynulosti mobilního telefonu
+  const visible = arr.slice(0, 250);
+
   for (const ch of visible) {
     const li = document.createElement('li');
     li.dataset.url = ch.url;
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'channel-info';
-    let displayName = ch.name;
-    
-    // Logika pro zobrazení kódu země u kanálů, kde není zřejmý z názvu sekce
-    if (ch.country && ch.country !== 'ZZ' && !section.includes(ch.country.toLowerCase())) {
-        displayName = `[${ch.country}] ${ch.name}`;
-    }
-    nameSpan.textContent = displayName;
+    nameSpan.textContent = ch.name;
+
+    const badge = document.createElement('span');
+    badge.className = 'genre-badge';
+    badge.textContent = ch.category;
+    nameSpan.appendChild(badge);
 
     const status = document.createElement('span');
     status.className = 'status';
-    // Nové kanály mají "netestováno"
-    if (ch.playable === undefined) { status.textContent = '❔'; status.title = 'Netestováno/Test probíhá'; }
-    else if (ch.playable) { status.textContent = '✅'; status.classList.add('ok'); status.title = 'Pravděpodobně funkční'; }
-    else { status.textContent = '❌'; status.classList.add('fail'); status.title = 'Pravděpodobně nefunkční'; }
+    if (ch.playable === undefined) { status.textContent = '❔'; status.title = 'Netestováno'; }
+    else if (ch.playable) { status.textContent = '✅'; status.classList.add('ok'); status.title = 'Funkční'; }
+    else { status.textContent = '❌'; status.classList.add('fail'); status.title = 'Nefunkční'; }
 
     const fav = document.createElement('span');
     fav.className = 'fav-star' + (favChannels[ch.url] ? ' fav' : '');
     fav.innerHTML = favChannels[ch.url] ? '⭐' : '☆';
-    fav.title = 'Přidat/Odebrat oblíbené';
     fav.addEventListener('click', e => {
       e.stopPropagation();
-      if (favChannels[ch.url]) { delete favChannels[ch.url]; fav.innerHTML = '☆'; fav.classList.remove('fav'); }
-      else { favChannels[ch.url] = '⭐'; fav.classList.add('fav'); }
+      if (favChannels[ch.url]) { delete favChannels[ch.url]; }
+      else { favChannels[ch.url] = '⭐'; }
       localStorage.setItem('favChannels', JSON.stringify(favChannels));
-      renderChannels(section); 
+      renderChannels(sectionId); 
     });
 
     li.appendChild(nameSpan);
@@ -551,7 +535,7 @@ function renderChannels(section) {
     li.appendChild(fav);
 
     li.addEventListener('click', () => {
-      playChannel(ch.url, li);
+      playChannel(ch.url);
       listEl.querySelectorAll('li').forEach(x => x.classList.remove('active'));
       li.classList.add('active');
     });
@@ -559,145 +543,80 @@ function renderChannels(section) {
     listEl.appendChild(li);
   }
 
-  listEl.style.display = 'block';
-  const total = loadedChannels[section].length;
-  const filtered = visible.length;
-  const okCount = loadedChannels[section].filter(c => c.playable).length; 
-  const unknownCount = loadedChannels[section].filter(c => c.playable === undefined).length; 
-  summaryEl.textContent = `Kanálů: ${total} | Zobrazeno: ${filtered} | Funkčních: ${okCount} | Neznámých: ${unknownCount}`;
+  const total = loadedChannels[sectionId].length;
+  summaryEl.textContent = `Celkem v zemi: ${total} | Zobrazeno: ${visible.length}`;
 }
 
-// *** ZKRÁCENÍ TIMEOUTU PŘI RUČNÍM REFRESHI NA 5000 MS ***
-async function refreshChannels(section) {
-  if (!loadedChannels[section]) return;
-  const refreshBtn = document.querySelector(`button.refresh-btn[data-section="${section}"]`);
-  const listEl = document.getElementById('list-' + section);
-  const summaryEl = document.getElementById('summary-' + section);
-  if (!refreshBtn || !listEl || !summaryEl) return;
-
-  const originalText = refreshBtn.textContent;
+async function refreshChannels() {
+  if (!currentSection || !loadedChannels[currentSection]) return;
+  const sectionId = currentSection;
+  const refreshBtn = document.getElementById('active-refresh-btn');
+  
   refreshBtn.disabled = true;
   refreshBtn.textContent = 'Ověřuji…';
 
-  for (let i = 0; i < loadedChannels[section].length; i++) {
-    const ch = loadedChannels[section][i];
-    
-    // Zobrazíme "Test probíhá"
-    const li = listEl.querySelector(`li[data-url="${ch.url}"]`);
-    if (li) {
-      const s = li.querySelector('.status');
-      if (s) { s.textContent = '❔'; s.classList.remove('ok','fail'); s.title = 'Test probíhá'; }
-    }
-    
-    // Provedeme nativní přehrávání a zjistíme funkčnost
-    const ok = await checkChannel(ch.url, 5000); // Zkrácení na 5 sekund
-    loadedChannels[section][i].playable = ok;
-    
-    // Aktualizace UI a souhrnu
-    renderChannels(section);
+  for (let i = 0; i < loadedChannels[sectionId].length; i++) {
+    if (currentSection !== sectionId) break;
+    const ch = loadedChannels[sectionId][i];
+
+    const ok = await checkChannel(ch.url, 4000);
+    loadedChannels[sectionId][i].playable = ok;
+    renderChannels(sectionId);
   }
 
   refreshBtn.disabled = false;
-  refreshBtn.textContent = originalText;
+  refreshBtn.textContent = 'Ověřit stanice';
 }
 
-function playChannel(url, li) {
+function playChannel(url) {
   const player = document.getElementById('player');
-  // Zničení předchozí instance hls
   if (player._hls) { try { player._hls.destroy(); } catch(e){} player._hls = null; }
   player.pause();
   player.removeAttribute('src');
   player.load();
 
   const low = (url || '').toLowerCase();
-  // Použití hls.js pro M3U8 (nejčastější IPTV formát)
   if (low.includes('.m3u8') && Hls.isSupported()) {
-    // Správné volání konstruktoru Hls
     const hls = new Hls();
     player._hls = hls;
     hls.loadSource(url);
     hls.attachMedia(player);
     hls.on(Hls.Events.MANIFEST_PARSED, () => { player.play().catch(()=>{}); });
     hls.on(Hls.Events.ERROR, (ev, data) => {
-      console.warn('HLS error', data);
-      // Fallback na nativní přehrávání při fatální chybě HLS
       if (data.fatal) { try { hls.destroy(); } catch(e) {} player.src = url; player.play().catch(()=>{}); }
     });
   } else {
-    // Nativní pokus (MP4, apod.)
     try {
       player.src = url;
       player.play().catch(e => console.warn('Playback failed', e));
     } catch(e) {
-      alert('Přehrávání se nezdařilo (formát/prohlížeč).');
+      alert('Přehrávání se nezdařilo.');
     }
   }
 }
 
-/* ================= FUNKCE PRO CELOU OBRAZOVKU ================= */
-function setupFullscreenButton() {
-    const btn = document.getElementById('fullscreen-btn');
-    const player = document.getElementById('player');
-    
-    btn.addEventListener('click', () => {
-        // Kontrola, zda je video aktivní
-        if (player.paused && (!player.currentSrc || player.currentSrc.length < 5)) {
-            alert('Nejprve spusťte přehrávání kanálu.');
-            return;
-        }
-        
-        // Logika pro spuštění Celé obrazovky na video přehrávači
+function setupEvents() {
+    document.getElementById('fullscreen-btn').addEventListener('click', () => {
+        const player = document.getElementById('player');
         if (player.requestFullscreen) {
-            player.requestFullscreen().catch(err => {
-                console.error("Celá obrazovka se nezdařila: " + err);
-                alert('Nepodařilo se spustit Celou obrazovku (blokováno prohlížečem?).');
-            });
-        } else if (player.webkitRequestFullscreen) { /* Safari */
-            player.webkitRequestFullscreen();
-        } else if (player.msRequestFullscreen) { /* IE11 */
-            player.msRequestFullscreen();
-        } else {
-            alert('Váš prohlížeč Celou obrazovku nepodporuje.');
+            player.requestFullscreen().catch(() => alert('Fullscreen nelze spustit.'));
         }
     });
-}
 
-/* ================= UI init ================= */
-
-function setupFilterInputs() {
-  document.querySelectorAll('input.filter-input').forEach(inp => {
-    // Při spuštění skryjeme, aby se zobrazil až po kliknutí na "Načíst"
-    inp.style.display = 'none'; 
-    inp.disabled = false;
-    const section = inp.dataset.section;
-    inp.removeEventListener('input', inp._handler);
-    inp._handler = () => renderChannels(section);
-    inp.addEventListener('input', inp._handler);
-  });
-}
-
-function setupButtons() {
-  document.querySelectorAll('button.load-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const section = btn.dataset.section;
-      // Funkce loadSection nyní zajišťuje i toggle logiku
-      await loadSection(section, btn);
+    document.getElementById('active-filter').addEventListener('input', () => {
+        if (currentSection) renderChannels(currentSection);
     });
-  });
-  document.querySelectorAll('button.refresh-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const section = btn.dataset.section;
-      await refreshChannels(section);
+
+    document.getElementById('genre-filter').addEventListener('change', () => {
+        if (currentSection) renderChannels(currentSection);
     });
-  });
+
+    document.getElementById('active-refresh-btn').addEventListener('click', () => {
+        refreshChannels();
+    });
 }
 
-function init() {
-  setupButtons();
-  setupFilterInputs();
-  setupFullscreenButton(); // Nastavení tlačítka Celá obrazovka
-}
-window.addEventListener('load', init);
+window.addEventListener('load', setupEvents);
 </script>
 </body>
 </html>
